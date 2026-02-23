@@ -5,7 +5,15 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node launcher.js",
-    "dev": "node --no-warnings --watch launcher.js"
+    "dev": "node --no-warnings --watch launcher.js",
+    "check": "node pre-deploy-check.js",
+    "docker:build": "docker build -t kp-music:latest .",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:test": "npm run docker:build && npm run docker:up && sleep 2 && curl http://localhost:3000/health && npm run docker:down",
+    "test": "npm run check && npm audit",
+    "prod": "NODE_ENV=production node launcher.js"
   },
   "dependencies": {
     "@discordjs/opus": "^0.10.0",

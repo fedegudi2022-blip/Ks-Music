@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: kp-music-bot
+    runtime: node
+    plan: starter
+    region: oregon
+    
+    buildCommand: >
+      nix flake update &&
+      nix develop -c npm ci --production
+    
+    startCommand: nix develop -c node launcher.js
+    
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=512
+      - key: PREFIX
+        value: "!"
+      - key: PLAYLIST_LIMIT
+        value: "30"
+      
+      # Discord Bot
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: CLIENT_SECRET
+        sync: false
+      
+      # Spotify
+      - key: SPOTIFY_CLIENT_ID
+        sync: false
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false
+      
+      # YouTube
+      - key: YOUTUBE_API_KEY
+        sync: false
+      
+      # Other
+      - key: USER_ID
+        sync: false
+      - key: YTDLP_PATH
+        value: yt-dlp
+    
+    # Health check
+    healthCheckPath: /health
+    healthCheckInterval: 30
+    healthCheckTimeout: 10
+    
+    # Auto-deploy on git push
+    autoDeploy: true
+    
+    # Resources
+    disk:
+      size: 1GB
+    
+    # Keep-alive endpoint
+    staticSite: false
+    previewUrl: https://${{ render.service.name }}.onrender.com

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  kp-music:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    container_name: kp-music-bot
+    
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=512
+      PORT: 3000
+      
+      # Discord
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      
+      # Spotify
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      
+      # YouTube
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      
+      # Bot Config
+      PREFIX: "!"
+      PLAYLIST_LIMIT: 30
+      USER_ID: ${USER_ID}
+      YTDLP_PATH: /usr/local/bin/yt-dlp
+    
+    ports:
+      - "3000:3000"
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Volume for cache persistence
+    volumes:
+      - ./logs:/app/logs
+      - ./.music-cache.json:/app/.music-cache.json
+
+volumes:
+  bot-cache:
+    driver: local
