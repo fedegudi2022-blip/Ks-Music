@@ -305,7 +305,7 @@ async function spotifyPlaylistFull(id, kind, limit) {
 }
 
 // ─── YT-DLP SEARCH ───────────────────────────────
-async function ytdlpSearch(query, count = 5) {
+async function ytdlpSearch(query, count = 5, retryWithoutCookies = false) {
   try {
     const args = [
       `ytsearch${count}:${query}`,
@@ -313,7 +313,9 @@ async function ytdlpSearch(query, count = 5) {
       "--no-playlist", "--no-warnings", "--quiet",
     ];
     const cookieFile = path.join(process.cwd(), "cookies.txt");
-    if (fs.existsSync(cookieFile)) args.push("--cookies", cookieFile);
+    if (fs.existsSync(cookieFile) && !retryWithoutCookies) {
+      args.push("--cookies", cookieFile);
+    }
     const { stdout } = await execFileAsync(YTDLP, args, { timeout: YTDLP_TIMEOUT });
     const lines = stdout.trim().split("\n").filter(Boolean);
     if (!lines.length) return count === 1 ? null : [];
@@ -328,11 +330,18 @@ async function ytdlpSearch(query, count = 5) {
       };
     }).filter(r => r && !deadUrls.has(r.url));
     return count === 1 ? (results[0] ?? null) : results;
-  } catch { return count === 1 ? null : []; }
+  } catch (err) {
+    // Si falla por autenticación y aún no hemos reintentar sin cookies, intentar again
+    if (!retryWithoutCookies && (err.message.includes("Sign in to confirm") || err.message.includes("ERROR"))) {
+      console.warn(`  ⚠️  Cookies posiblemente expiradas. Reintentando sin cookies...`);
+      return ytdlpSearch(query, count, true);
+    }
+    return count === 1 ? null : [];
+  }
 }
 
 // ─── YT-DLP PLAYLIST ───────────────────────────────
-async function ytPlaylistFull(url, limit) {
+async function ytPlaylistFull(url, limit, retryWithoutCookies = false) {
   try {
     const args = [
       url, "--flat-playlist", "--playlist-end", String(limit),
@@ -340,7 +349,9 @@ async function ytPlaylistFull(url, limit) {
       "--no-warnings", "--quiet",
     ];
     const cookieFile = path.join(process.cwd(), "cookies.txt");
-    if (fs.existsSync(cookieFile)) args.push("--cookies", cookieFile);
+    if (fs.existsSync(cookieFile) && !retryWithoutCookies) {
+      args.push("--cookies", cookieFile);
+    }
     const { stdout } = await execFileAsync(YTDLP, args, { timeout: 18_000 });
     const lines = stdout.trim().split("\n").map(l => l.trim()).filter(Boolean);
     if (!lines.length) return null;
@@ -354,12 +365,19 @@ async function ytPlaylistFull(url, limit) {
         urls.push(`https://www.youtube.com/watch?v=${id.trim()}`);
     }
     return urls.length ? { name: playlistName, thumbnail: null, urls } : null;
-  } catch { return null; }
+  } catch (err) {
+    // Si falla por autenticación y aún no hemos reintentar sin cookies, intentar again
+    if (!retryWithoutCookies && (err.message.includes("Sign in to confirm") || err.message.includes("ERROR"))) {
+      console.warn(`  ⚠️  Cookies posiblemente expiradas en playlist. Reintentando sin cookies...`);
+      return ytPlaylistFull(url, limit, true);
+    }
+    return null;
+  }
 }
 
 // ─── STREAM EXTRACTION ────────────────────────────
 const _extracting = new Set();
-async function preExtractStream(videoUrl) {
+async function preExtractStream(videoUrl, retryWithoutCookies = false) {
   if (!videoUrl || _extracting.has(videoUrl) || deadUrls.has(videoUrl)) return;
   const cached = streamCache.get(videoUrl);
   if (cached && Date.now() - cached.ts < STREAM_TTL / 2) return;
@@ -372,13 +390,22 @@ async function preExtractStream(videoUrl) {
       "--no-playlist", "--no-warnings", "--quiet",
     ];
     const cookieFile = path.join(process.cwd(), "cookies.txt");
-    if (fs.existsSync(cookieFile)) args.push("--cookies", cookieFile);
+    if (fs.existsSync(cookieFile) && !retryWithoutCookies) {
+      args.push("--cookies", cookieFile);
+    }
     const { stdout } = await execFileAsync(YTDLP, args, { timeout: 10_000 });
     const streamUrl = stdout.trim().split("\n")[0];
     if (streamUrl?.startsWith("http")) {
       streamCache.set(videoUrl, { streamUrl, ts: Date.now() });
     }
-  } catch { } finally { 
+  } catch (err) {
+    // Si falla por autenticación y aún no hemos reintentado sin cookies, intentar again
+    if (!retryWithoutCookies && (err.message.includes("Sign in to confirm") || err.message.includes("ERROR"))) {
+      console.warn(`  ⚠️  Cookies expiradas en stream. Reintentando sin cookies...`);
+      _extracting.delete(videoUrl);
+      return preExtractStream(videoUrl, true);
+    }
+  } finally { 
     _extracting.delete(videoUrl); 
   }
 }
