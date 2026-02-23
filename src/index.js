@@ -339,7 +339,7 @@ client.on("messageCreate", async message => {
 // ── READY ─────────────────────────────────────────────────────────────────────
 let readyLogged = false;
 
-client.once("clientReady", () => {
+client.once("ready", () => {
   if (readyLogged) return;
   readyLogged = true;
   console.log(`\n  ✓ ${client.user.tag}  |  Prefijo: ${PREFIX}  |  ${client.commands.size} comandos\n`);
@@ -355,7 +355,7 @@ client.once("clientReady", () => {
 });
 
 // ── CONNECTION LIFECYCLE ──────────────────────────────────────────────────────
-client.on('clientReady', () => {
+client.on('ready', () => {
   console.log(`  ✓ [READY] Esperando comandos...`);
 });
 

@@ -1,6 +1,23 @@
+FROM node:20-alpine AS builder
+
+# Install build dependencies for native modules
+RUN apk add --no-cache \
+    alpine-sdk \
+    python3
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node dependencies (including optional native modules)
+RUN npm ci
+
+# Final stage
 FROM node:20-alpine
 
-# Install system dependencies
+# Install runtime dependencies
 RUN apk add --no-cache \
     ffmpeg \
     curl \
@@ -17,11 +34,11 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o 
 # Set working directory
 WORKDIR /app
 
+# Copy node_modules from builder
+COPY --from=builder /app/node_modules ./node_modules
+
 # Copy package files
 COPY package*.json ./
-
-# Install Node dependencies
-RUN npm ci --only=production
 
 # Copy application files
 COPY . .
