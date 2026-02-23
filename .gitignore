@@ -1,0 +1,49 @@
+# Logging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cache
+.music-cache.json
+.eslintcache
+.cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Bot specific
+*.pid
+.music-cache.json
+
+# Audio files (if downloaded)
+*.mp3
+*.wav
+*.aac
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo

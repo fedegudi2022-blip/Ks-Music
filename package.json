@@ -1,0 +1,28 @@
+{
+  "name": "kp-music",
+  "version": "4.0.0",
+  "description": "Bot de música — DisTube + yt-dlp + Spotify",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node launcher.js",
+    "dev": "node --no-warnings --watch launcher.js"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.10.0",
+    "@discordjs/voice": "^0.19.0",
+    "@distube/spotify": "^2.0.2",
+    "@distube/yt-dlp": "^2.0.1",
+    "@snazzah/davey": "^0.1.9",
+    "discord.js": "^14.18.0",
+    "distube": "^5.0.8",
+    "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.2.0",
+    "mediaplex": "^1.0.0",
+    "opusscript": "^0.1.1",
+    "sodium-native": "^5.0.10",
+    "tweetnacl": "^1.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
