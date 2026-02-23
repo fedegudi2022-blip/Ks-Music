@@ -15,10 +15,10 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
@@ -26,69 +26,83 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Check syntax
-      run: npm run lint || true
-
-    - name: Verify config
+    - name: Verify core files
       run: |
-        test -f launcher.js && echo "✓ launcher.js found"
-        test -f src/index.js && echo "✓ src/index.js found"
-        test -f package.json && echo "✓ package.json found"
+        test -f launcher.js && echo "✓ launcher.js found" || exit 1
+        test -f src/index.js && echo "✓ src/index.js found" || exit 1
+        test -f package.json && echo "✓ package.json found" || exit 1
+        test -f .env.example && echo "✓ .env.example found"
 
-    - name: Check .env template
-      run: test -f .env.example && echo "✓ .env.example found"
+    - name: Basic module load test
+      run: node -c launcher.js && echo "✓ launcher.js syntax OK"
 
   security:
     runs-on: ubuntu-latest
+    
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
 
     - name: Run npm audit
-      run: npm audit --production || true
-
-    - name: Check for vulnerabilities
-      run: npm audit --json > audit.json || true
-      
-    - name: Upload audit results
-      uses: actions/upload-artifact@v3
-      with:
-        name: npm-audit
-        path: audit.json
+      run: npm audit --production
 
   docker:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: Build Docker image
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v5
       with:
         context: .
         push: false
         tags: kp-music:latest
-        cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
-        cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
 
-  notify:
+  build-status:
     runs-on: ubuntu-latest
     if: always()
-    needs: [test, security]
+    needs: [test, security, docker]
     
     steps:
-    - name: Check build status
+    - name: Check test results
       run: |
+        echo "::group::Build Status"
         if [ "${{ needs.test.result }}" == "success" ]; then
-          echo "✅ All checks passed!"
+          echo "✅ Tests: PASSED"
         else
-          echo "❌ Some checks failed"
+          echo "❌ Tests: FAILED"
+        fi
+        
+        if [ "${{ needs.security.result }}" == "success" ]; then
+          echo "✅ Security: PASSED"
+        else
+          echo "⚠️  Security: FAILED (vulnerabilities found)"
+        fi
+        
+        if [ "${{ needs.docker.result }}" == "success" ] || [ "${{ needs.docker.result }}" == "skipped" ]; then
+          echo "✅ Docker: OK"
+        else
+          echo "❌ Docker: FAILED"
+        fi
+        echo "::endgroup::"
+        
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.security.result }}" != "failure" ]; then
+          echo "✅ Build Ready for Deployment"
+          exit 0
+        else
+          echo "❌ Fix errors before deploying"
           exit 1
         fi
