@@ -1,9 +1,12 @@
 FROM node:20-alpine AS builder
 
-# Install build dependencies for native modules
+# Install build dependencies for native modules and optional dependencies
 RUN apk add --no-cache \
-    alpine-sdk \
-    python3
+    build-base \
+    python3 \
+    git \
+    curl \
+    ca-certificates
 
 # Set working directory
 WORKDIR /app
@@ -11,8 +14,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install Node dependencies (including optional native modules)
-RUN npm ci
+# Install Node dependencies with legacy peer deps for compatibility
+RUN npm ci --legacy-peer-deps 2>&1 || npm install --legacy-peer-deps --no-save
 
 # Final stage
 FROM node:20-alpine
