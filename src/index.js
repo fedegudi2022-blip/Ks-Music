@@ -324,7 +324,7 @@ client.on("messageCreate", async message => {
 });
 
 // ── READY ─────────────────────────────────────────────────────────────────────
-client.once("clientReady", () => {
+client.once("ready", () => {
   console.log(`\n  ✓ ${client.user.tag}  |  Prefijo: ${PREFIX}  |  ${client.commands.size} comandos\n`);
   const acts = [
     { text: `Usa: ${PREFIX}play · ${PREFIX}help`, type: ActivityType.Listening },
