@@ -337,4 +337,20 @@ client.once("clientReady", () => {
   setInterval(() => { i++; setAct(); }, 45_000);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// ── LOGIN CON VERIFICACIÓN ────────────────────────────────────────────────────
+const token = process.env.DISCORD_TOKEN;
+if (!token) {
+  console.error('\n  ❌ ERROR: DISCORD_TOKEN no está configurado');
+  console.error('  Verifica que hayas establecido la variable de entorno en Render.com');
+  process.exit(1);
+} else {
+  console.log(`\n  🤖 Intentando conectar a Discord...`);
+  client.login(token).catch(err => {
+    console.error(`\n  ❌ Error al conectar a Discord: ${err.message}`);
+    console.error('  Posibles causas:');
+    console.error('  1. Token inválido o expirado');
+    console.error('  2. Bot no tiene permisos en el servidor');
+    console.error('  3. Problema de conexión de red');
+    process.exit(1);
+  });
+}

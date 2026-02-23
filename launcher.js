@@ -168,6 +168,22 @@ healthServer.listen(PORT, () => {
 // CAPA 6: Cargar la aplicación
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// Verificar variables críticas antes de cargar
+console.log('\n  🔍 Verificando configuración...');
+const requiredVars = ['DISCORD_TOKEN', 'PREFIX'];
+for (const varName of requiredVars) {
+  const value = process.env[varName];
+  if (value) {
+    const masked = varName === 'DISCORD_TOKEN' 
+      ? value.substring(0, 10) + '...' + value.substring(value.length - 4)
+      : value;
+    console.log(`  ✓ ${varName}: ${masked}`);
+  } else {
+    console.error(`  ❌ ${varName}: NO CONFIGURADO`);
+  }
+}
+console.log();
+
 const indexModule = require('./src/index.js');
 
 // Mark bot as ready after a short delay
