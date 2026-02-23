@@ -158,6 +158,19 @@ const distube = new DisTube(client, {
 });
 client.distube = distube;
 
+// ── ERROR HANDLERS PARA CLIENT ────────────────────────────────────────────────
+client.on('error', (error) => {
+  console.error('  ❌ [Client Error]', error.message);
+});
+
+client.on('warn', (warn) => {
+  console.warn('  ⚠️  [Client Warn]', warn);
+});
+
+client.on('shardError', (error) => {
+  console.error('  ❌ [Shard Error]', error.message);
+});
+
 // ── NOW PLAYING ───────────────────────────────────────────────────────────────
 const npMap = new Map();
 function stopNP(guildId) { npMap.delete(guildId); }
@@ -324,7 +337,11 @@ client.on("messageCreate", async message => {
 });
 
 // ── READY ─────────────────────────────────────────────────────────────────────
+let readyLogged = false;
+
 client.once("ready", () => {
+  if (readyLogged) return;
+  readyLogged = true;
   console.log(`\n  ✓ ${client.user.tag}  |  Prefijo: ${PREFIX}  |  ${client.commands.size} comandos\n`);
   const acts = [
     { text: `Usa: ${PREFIX}play · ${PREFIX}help`, type: ActivityType.Listening },
@@ -335,6 +352,19 @@ client.once("ready", () => {
   const setAct = () => client.user.setActivity(acts[i % acts.length].text, { type: acts[i % acts.length].type });
   setAct();
   setInterval(() => { i++; setAct(); }, 45_000);
+});
+
+// ── CONNECTION LIFECYCLE ──────────────────────────────────────────────────────
+client.on('ready', () => {
+  console.log(`  ✓ [READY] Esperando comandos...`);
+});
+
+client.on('reconnecting', () => {
+  console.log(`  🔄 [RECONNECTING] Reintentando conexión...`);
+});
+
+client.on('disconnect', () => {
+  console.log(`  ⚠️  [DISCONNECT] Desconectado de Discord`);
 });
 
 // ── LOGIN CON VERIFICACIÓN ────────────────────────────────────────────────────

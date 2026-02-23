@@ -184,7 +184,12 @@ for (const varName of requiredVars) {
 }
 console.log();
 
+console.log('  📦 Cargando aplicación del bot...');
 const indexModule = require('./src/index.js');
+console.log('  ✅ Aplicación cargada\n');
+
+console.log('  ⏳ Esperando a que el bot se conecte a Discord...');
+console.log('     (Esto puede tomar hasta 15 segundos)\n');
 
 // Mark bot as ready after a short delay
 setTimeout(() => {
