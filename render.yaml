@@ -5,23 +5,18 @@ services:
     plan: starter
     region: oregon
     
-    buildCommand: >
-      nix flake update &&
-      nix develop -c npm ci --production
-    
-    startCommand: nix develop -c node launcher.js
+    # Simplified build without Nix dependency
+    buildCommand: npm ci --production
+    startCommand: node launcher.js
     
     envVars:
+      # Node runtime
       - key: NODE_ENV
         value: production
       - key: NODE_OPTIONS
         value: --max-old-space-size=512
-      - key: PREFIX
-        value: "!"
-      - key: PLAYLIST_LIMIT
-        value: "30"
       
-      # Discord Bot
+      # Discord Bot (REQUIRED - set these in Render dashboard)
       - key: DISCORD_TOKEN
         sync: false
       - key: CLIENT_ID
@@ -29,23 +24,29 @@ services:
       - key: CLIENT_SECRET
         sync: false
       
-      # Spotify
+      # Bot settings
+      - key: PREFIX
+        value: "!"
+      - key: PLAYLIST_LIMIT
+        value: "30"
+      
+      # Spotify (optional - set in Render dashboard if needed)
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
       
-      # YouTube
+      # YouTube (optional - set in Render dashboard if needed)
       - key: YOUTUBE_API_KEY
         sync: false
       
-      # Other
+      # Other (optional)
       - key: USER_ID
         sync: false
       - key: YTDLP_PATH
         value: yt-dlp
     
-    # Health check
+    # Health check configuration
     healthCheckPath: /health
     healthCheckInterval: 30
     healthCheckTimeout: 10
@@ -56,7 +57,3 @@ services:
     # Resources
     disk:
       size: 1GB
-    
-    # Keep-alive endpoint
-    staticSite: false
-    previewUrl: https://${{ render.service.name }}.onrender.com
