@@ -1,4 +1,4 @@
-# 🎵 Kp-Music Bot
+# 🎵 Kp-Music Bot By Kepersonas
 
 <div align="center">
 
