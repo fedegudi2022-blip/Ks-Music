@@ -23,16 +23,9 @@ global.setTimeout = function(callback, delay, ...args) {
 Object.setPrototypeOf(global.setTimeout, Object.getPrototypeOf(_originalSetTimeout));
 global.setTimeout.toString = () => 'function setTimeout() { [native code] }';
 
-// Suprimir todos los TimeoutNegativeWarnings a nivel de proceso
+// Suprimir todos los warnings de dependencias
 process.on('warning', (warning) => {
-  // Ignorar TimeoutNegativeWarning completamente
-  if (warning.code === 'TimeoutNegativeWarning') {
-    return;
-  }
-  // Ignorar otros warnings de dependencias
-  if (warning.code && ['DEP0169', 'DEP0123', 'MaxSizeExceededWarning'].includes(warning.code)) {
-    return;
-  }
-  // Mostrar otros warnings
-  console.warn(warning);
+  // Suprimir completamente todos los warnings
+  // No mostrar nada en consola
+  return;
 });

@@ -44,13 +44,18 @@ process.on('warning', (warning) => {
     return;
   }
   
-  // Para otros warnings, mostrar solo si es crítico
+  // Suprimir todos los DeprecationWarnings
+  if (warning.category === 'DeprecationWarning') {
+    return;
+  }
+  
+  // Suprimir warnings experimental
   if (warning.category === 'ExperimentalWarning') {
     return;
   }
   
-  // Log de otros warnings (pero no de los suprimidos)
-  console.warn(`⚠️  [${warning.code}]: ${warning.message}`);
+  // Solo silenciar, no mostrar nada
+  return;
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
