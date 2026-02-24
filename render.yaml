@@ -4,50 +4,26 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    
-    # Simplified build without Nix dependency
-    buildCommand: npm ci --production
-    startCommand: node launcher.js
+    buildCommand: npm ci --legacy-peer-deps
+    startCommand: npm start
     
     envVars:
-      # Node runtime
       - key: NODE_ENV
         value: production
-      - key: NODE_OPTIONS
-        value: --max-old-space-size=512
-      
-      # Discord Bot (REQUIRED - set these in Render dashboard)
       - key: DISCORD_TOKEN
         sync: false
-      - key: CLIENT_ID
+      - key: YT_COOKIES
         sync: false
-      - key: CLIENT_SECRET
-        sync: false
-      
-      # Bot settings
       - key: PREFIX
         value: "!"
-      - key: PLAYLIST_LIMIT
-        value: "30"
-      
-      # Spotify (optional - set in Render dashboard if needed)
       - key: SPOTIFY_CLIENT_ID
         sync: false
       - key: SPOTIFY_CLIENT_SECRET
         sync: false
-      
-      # YouTube (optional - set in Render dashboard if needed)
       - key: YOUTUBE_API_KEY
         sync: false
-      
-      # Other (optional)
-      - key: USER_ID
-        sync: false
-      - key: YTDLP_PATH
-        value: yt-dlp
-    
-    # Health check configuration
-    healthCheckPath: /health
+      - key: PLAYLIST_LIMIT
+        value: "30"
     healthCheckInterval: 30
     healthCheckTimeout: 10
     
