@@ -270,17 +270,51 @@ distube
 
   .on("error", async (error, queue) => {
     const msg = error?.message ?? String(error);
-    console.error("DisTube error:", msg);
-
+    const msgLower = msg.toLowerCase();
+    
     const q = queue;
     if (!q) return;
 
-    const isUnavailable = /not available|unavailable|private|removed|copyright|blocked/i.test(msg);
-    const isFfmpeg      = /ffmpeg/i.test(msg);
-    const isNetwork     = /network|timeout|ECONNRESET|ETIMEDOUT|Error 404/i.test(msg);
-    const currentSong   = q.songs[0];
+    // Detectar tipos de error
+    const isAuthError     = /sign in|not a bot|403|401|unauthorized|authentication/i.test(msg);
+    const isUnavailable   = /not available|unavailable|private|removed|copyright|blocked|410/i.test(msg);
+    const isNetworkError  = /network|timeout|econnreset|etimedout|503|502|500|error 404|connection/i.test(msg);
+    const currentSong     = q.songs[0];
 
-    // Video no disponible → buscar alternativa rápidamente
+    // Error de autenticación YouTube (cookies)
+    if (isAuthError && msgLower.includes('youtube')) {
+      console.warn(`  ⚠️  Error YouTube: ${msg.substring(0, 80)}...`);
+      
+      if (currentSong) {
+        try {
+          const found = await retryWithAlternative(q, currentSong);
+          if (found) {
+            if (q.songs.length > 1) await q.skip();
+            return;
+          }
+        } catch (retryErr) {
+          console.error("  ❌ Alternative search failed:", retryErr.message);
+        }
+      }
+
+      // Si hay más canciones, saltar; sino, terminar
+      if (q.songs.length <= 1) {
+        leaveVoice(q);
+        stopNP(q.id);
+        client.silentAdd.delete(q.id);
+        q.textChannel?.send({
+          embeds: [embedError("❌ YouTube requiere autenticación. Actualiza las cookies.")],
+        }).catch(() => {});
+      } else {
+        q.textChannel?.send({
+          embeds: [embedError("⚠️ Saltando canción (error YouTube)…")],
+        }).then(m => setTimeout(() => m.delete().catch(() => {}), 2_500)).catch(() => {});
+        try { distube.skip(q.id); } catch (e) { console.error("skip error:", e.message); }
+      }
+      return;
+    }
+
+    // Video no disponible → buscar alternativa
     if (isUnavailable && currentSong) {
       try {
         const found = await retryWithAlternative(q, currentSong);
@@ -289,7 +323,7 @@ distube
           return;
         }
       } catch (retryErr) {
-        console.error("retry failed:", retryErr.message);
+        console.error("  ❌ retry failed:", retryErr.message);
       }
     }
 
@@ -298,8 +332,9 @@ distube
       leaveVoice(q);
       stopNP(q.id);
       client.silentAdd.delete(q.id);
+      const errorMsg = isNetworkError ? "Error de conexión. Reintentá después." : "No pude reproducir.";
       q.textChannel?.send({
-        embeds: [embedError("❌ No pude reproducir. Saliendo del canal.")],
+        embeds: [embedError(`❌ ${errorMsg}`)],
       }).catch(() => {});
     } else {
       // Saltar automáticamente con mensaje breve

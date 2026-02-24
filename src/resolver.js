@@ -313,12 +313,16 @@ async function ytdlpSearch(query, count = 5, retryWithoutCookies = false) {
       "--no-playlist", "--no-warnings", "--quiet",
     ];
     const cookieFile = path.join(process.cwd(), "cookies.txt");
-    if (fs.existsSync(cookieFile) && !retryWithoutCookies) {
+    const hasCookies = fs.existsSync(cookieFile) && fs.statSync(cookieFile).size > 100;
+    
+    if (hasCookies && !retryWithoutCookies) {
       args.push("--cookies", cookieFile);
     }
-    const { stdout } = await execFileAsync(YTDLP, args, { timeout: YTDLP_TIMEOUT });
+    
+    const { stdout, stderr } = await execFileAsync(YTDLP, args, { timeout: YTDLP_TIMEOUT });
     const lines = stdout.trim().split("\n").filter(Boolean);
     if (!lines.length) return count === 1 ? null : [];
+    
     const results = lines.map(line => {
       const parts = line.split("\t");
       const id = parts[0]?.trim();
@@ -329,13 +333,18 @@ async function ytdlpSearch(query, count = 5, retryWithoutCookies = false) {
         thumbnail: parts[2]?.trim() ?? null,
       };
     }).filter(r => r && !deadUrls.has(r.url));
+    
     return count === 1 ? (results[0] ?? null) : results;
   } catch (err) {
-    // Si falla por autenticación y aún no hemos reintentar sin cookies, intentar again
-    if (!retryWithoutCookies && (err.message.includes("Sign in to confirm") || err.message.includes("ERROR"))) {
-      console.warn(`  ⚠️  Cookies posiblemente expiradas. Reintentando sin cookies...`);
+    const errMsg = err.message?.toLowerCase() ?? '';
+    const isAuthError = errMsg.includes('sign in') || errMsg.includes('not a bot') || errMsg.includes('403');
+    
+    // Si es error de autenticación y aún no hemos reintentado sin cookies
+    if (isAuthError && !retryWithoutCookies && fs.existsSync(path.join(process.cwd(), "cookies.txt"))) {
+      console.warn(`  ⚠️  Cookies de YouTube no válidas. Usando búsqueda alternativa...`);
       return ytdlpSearch(query, count, true);
     }
+    
     return count === 1 ? null : [];
   }
 }
@@ -410,25 +419,36 @@ async function preExtractStream(videoUrl, retryWithoutCookies = false) {
   }
 }
 
-// ─── PARALLEL SEARCH ─────────────────────────────
+// ─── PARALLEL SEARCH CON MEJOR ESTRATEGIA ────────
 async function searchVideoWithFallback(query, thumbnail = null) {
-  const [spResults, ytApiResults, ytdlpResults] = await Promise.allSettled([
+  // Priorizar YouTube API si está disponible (no requiere cookies)
+  if (YT_API_KEY) {
+    try {
+      const ytApiResult = await ytApiSearch(query, 1);
+      if (ytApiResult) {
+        preExtractStream(ytApiResult.url).catch(() => {});
+        return { 
+          ...ytApiResult,
+          thumbnail: thumbnail ?? ytApiResult.thumbnail
+        };
+      }
+    } catch (err) {
+      console.error(`  ⚠️  YouTube API failed: ${err.message}`);
+    }
+  }
+  
+  // Fallback: búsquedas paralelas (Spotify + yt-dlp)
+  const [spResults, ytdlpResults] = await Promise.allSettled([
     searchSpotify(query),
-    YT_API_KEY ? ytApiSearch(query, 5) : Promise.resolve(null),
-    ytdlpSearch(query, 5),
+    ytdlpSearch(query, 3),
   ]);
   
   const candidates = [];
   
-  if (ytApiResults.status === "fulfilled" && ytApiResults.value) {
-    const list = Array.isArray(ytApiResults.value) ? ytApiResults.value : [ytApiResults.value];
-    candidates.push(...list.filter(r => !deadUrls.has(r.url)));
-  }
-  
   if (ytdlpResults.status === "fulfilled" && ytdlpResults.value) {
     const list = Array.isArray(ytdlpResults.value) ? ytdlpResults.value : (ytdlpResults.value ? [ytdlpResults.value] : []);
     for (const r of list) {
-      if (!deadUrls.has(r.url) && !candidates.some(c => c.url === r.url)) {
+      if (!deadUrls.has(r.url)) {
         candidates.push(r);
       }
     }
@@ -439,8 +459,8 @@ async function searchVideoWithFallback(query, thumbnail = null) {
     const first = candidates[0];
     preExtractStream(first.url).catch(() => {});
     return { 
-      ...first, 
-      thumbnail: thumbnail ?? (Array.isArray(sp) ? sp[0]?.thumbnail : sp?.thumbnail) ?? first.thumbnail 
+      ...first,
+      thumbnail: thumbnail ?? (Array.isArray(sp) ? sp[0]?.thumbnail : sp?.thumbnail) ?? first.thumbnail
     };
   }
   

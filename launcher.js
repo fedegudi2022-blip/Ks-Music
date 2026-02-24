@@ -192,6 +192,26 @@ for (const varName of requiredVars) {
     console.error(`  ❌ ${varName}: NO CONFIGURADO`);
   }
 }
+
+// Verificar YouTube API y Cookies
+const fs = require('fs');
+const path = require('path');
+const hasCookies = fs.existsSync(path.join(process.cwd(), 'cookies.txt')) && 
+                   fs.statSync(path.join(process.cwd(), 'cookies.txt')).size > 100;
+const hasYtApi = !!process.env.YOUTUBE_API_KEY;
+
+if (hasYtApi) {
+  console.log(`  ✓ YOUTUBE_API_KEY: configurado`);
+} else {
+  console.log(`  ⚠️  YOUTUBE_API_KEY: no configurado (búsquedas más lentas)`);
+}
+
+if (hasCookies) {
+  console.log(`  ✓ YouTube Cookies: detectadas (${fs.statSync(path.join(process.cwd(), 'cookies.txt')).size} bytes)`);
+} else {
+  console.log(`  ⚠️  YouTube Cookies: no encontradas o inválidas (especificar YT_COOKIES)`);
+}
+
 console.log();
 
 console.log('  📦 Cargando aplicación del bot...');

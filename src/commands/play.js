@@ -160,20 +160,41 @@ async function _doPlay(message, client, voiceChannel, input, guildId) {
       const q = client.distube.getQueue(message);
       if (q?.songs[1]) client.prefetch(q.songs[1].name).catch(() => {});
     } catch (err) {
+      const errMsg = err.message?.toLowerCase() ?? '';
       console.error("PLAY error:", err.message);
-      if (/network|timeout|ECONNRESET|ETIMEDOUT/i.test(err.message)) {
+      
+      // Detectar tipo de error
+      const isAuthError = /sign in|not a bot|403|401|auth/i.test(err.message);
+      const isNetError = /network|timeout|econnreset|etimedout|503|502/i.test(err.message);
+      const isNotFound = /not(?:\s+|_)found|404|missing|removed/i.test(err.message);
+      
+      let userMsg = "No pude reproducir eso";
+      
+      if (isAuthError) {
+        userMsg = "YouTube requiere autenticación (actualiza las cookies)";
+      } else if (isNetError) {
+        userMsg = "Error de conexión, reintentando…";
+      } else if (isNotFound) {
+        userMsg = "La canción no existe o fue removida";
+      }
+      
+      if (isNetError) {
         await message.channel.send({
-          embeds: [new EmbedBuilder().setColor(client.COLOR.WARN).setDescription("⚠️ Error de red, reintentando…")],
+          embeds: [new EmbedBuilder().setColor(client.COLOR.WARN).setDescription(`⚠️ ${userMsg}`)],
         }).then(m => setTimeout(() => m.delete().catch(() => {}), 3_000)).catch(() => {});
         try {
           await client.distube.play(voiceChannel, resolved.url, {
             message, textChannel: message.channel, member: message.member,
           });
         } catch (err2) {
-          message.channel.send({ embeds: [client.embedError(`No pude reproducir eso: ${err2.message}`)] });
+          const msg2 = err2.message?.toLowerCase() ?? '';
+          const msgUser = msg2.includes('auth') ? 
+            "YouTube requiere autenticación" : 
+            "No pude reproducir";
+          message.channel.send({ embeds: [client.embedError(`❌ ${msgUser}`)] }).catch(() => {});
         }
       } else {
-        message.channel.send({ embeds: [client.embedError(`No pude reproducir eso: ${err.message}`)] });
+        message.channel.send({ embeds: [client.embedError(`❌ ${userMsg}`)] }).catch(() => {});
       }
     }
     return;
